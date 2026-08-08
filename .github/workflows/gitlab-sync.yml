@@ -1,0 +1,40 @@
+# GitHub Actions — spiegelt `main` + Tags nach GitLab (SHA-identisch).
+#
+# .github/ liegt auf BEIDEN Seiten (GitLab ignoriert es) – dadurch sind die
+# Repos auf beiden Plattformen exakt identisch (gleiche Commits, SHAs, Tags).
+#
+# Voraussetzungen (Repository → Settings → Secrets & variables → Actions):
+#   Variable : GITLAB_REMOTE_URL   z.B. https://gitlab.unikat-cloud.de/group/repo.git
+#   Secret   : GITLAB_SYNC_TOKEN   GitLab PAT mit Scopes: read_repository, write_repository
+#
+# Loop-Schutz: SHA-Vergleich im Skript – Echo-Pushes werden erkannt und
+# übersprungen, es entsteht keine Schleife.
+
+name: sync-to-gitlab
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run git-sync
+        run: bash scripts/git-sync.sh
+        env:
+          TARGET_REMOTE_URL: ${{ vars.GITLAB_REMOTE_URL }}
+          TARGET_TOKEN: ${{ secrets.GITLAB_SYNC_TOKEN }}
+          TARGET_USER: oauth2
+          BRANCH: main
+          FROM_SHA: ${{ github.event.before }}
+          TO_SHA: ${{ github.event.after }}

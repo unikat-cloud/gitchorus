@@ -1,0 +1,34 @@
+# GitLab CI — spiegelt `main` + Tags nach GitHub (SHA-identisch).
+#
+# .gitlab-ci.yml liegt auf BEIDEN Seiten (GitHub ignoriert sie) – dadurch sind
+# die Repos auf beiden Plattformen exakt identisch (gleiche Commits, SHAs, Tags).
+#
+# Voraussetzungen (CI/CD - Variablen, am besten "Masked" + "Protected"):
+#   GITHUB_REMOTE_URL   z.B. https://github.com/<org>/<repo>.git
+#   GITHUB_SYNC_TOKEN   GitHub fine-grained PAT mit Contents: Read/Write
+#
+# Loop-Schutz: SHA-Vergleich im Skript – Echo-Pushes werden erkannt und
+# übersprungen, es entsteht keine Schleife.
+
+stages:
+  - sync
+
+sync-to-github:
+  stage: sync
+  image: alpine:latest
+  tags: [docker]
+  rules:
+    # Nur echte Push-Pipelines auf main oder Tags; keine MR-/Scheduled-Pipelines
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG != "")'
+  before_script:
+    - apk add --no-cache git bash >/dev/null
+  variables:
+    GIT_DEPTH: 0
+    TARGET_REMOTE_URL: "$GITHUB_REMOTE_URL"
+    TARGET_TOKEN: "$GITHUB_SYNC_TOKEN"
+    TARGET_USER: "x-access-token"
+    BRANCH: "main"
+    FROM_SHA: "$CI_COMMIT_BEFORE_SHA"
+    TO_SHA: "$CI_COMMIT_SHA"
+  script:
+    - bash scripts/git-sync.sh
