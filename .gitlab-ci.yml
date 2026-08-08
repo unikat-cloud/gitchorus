@@ -16,7 +16,7 @@ stages:
 sync-to-github:
   stage: sync
   image: alpine:latest
-  tags: [docker]
+  tags: [mcp]
   rules:
     # Nur echte Push-Pipelines auf main oder Tags; keine MR-/Scheduled-Pipelines
     - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG != "")'
